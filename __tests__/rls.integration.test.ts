@@ -42,20 +42,13 @@ describe('RLS: role and tenant isolation', () => {
     const viewerUser = await getOrCreateUser(viewerClient, 'viewer-test-edtech@gmail.com')
     const outsiderUser = await getOrCreateUser(outsiderClient, 'outsider-test-edtech@gmail.com')
 
-    const { data: doc } = await ownerClient
-      .from('documents')
-      .insert({ title: 'RLS Test Doc', owner_id: ownerUser.id } as any)
-      .select()
-      .single()
+    const { data: docId, error: createError } = await ownerClient.rpc('create_document')
 
-    documentId = (doc as any)!.id
+    if (createError || !docId) {
+      throw new Error(`create_document failed: ${createError?.message ?? 'no id returned'}`)
+    }
 
-    await ownerClient.from('collaborators').insert({
-      document_id: documentId,
-      user_id: ownerUser.id,
-      role: 'owner',
-    } as any)
-
+    documentId = docId as string
     await ownerClient.from('collaborators').insert({
       document_id: documentId,
       user_id: viewerUser.id,

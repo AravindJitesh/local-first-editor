@@ -23,29 +23,16 @@ export function NewDocumentButton() {
         return
       }
 
-      const { data: doc, error: docError } = await supabase
-        .from('documents')
-        .insert({ title: 'Untitled Document', owner_id: user.id })
-        .select()
-        .single()
+      const { data: docId, error: docError } = await supabase.rpc('create_document', {
+        document_title: 'Untitled Document',
+      })
 
-      if (docError || !doc) {
+      if (docError || !docId) {
         setError(docError?.message ?? 'Could not create document. Please try again.')
         return
       }
 
-      const { error: collaboratorError } = await supabase.from('collaborators').insert({
-        document_id: doc.id,
-        user_id: user.id,
-        role: 'owner',
-      })
-
-      if (collaboratorError) {
-        setError(collaboratorError.message)
-        return
-      }
-
-      router.push(`/documents/${doc.id}`)
+      router.push(`/documents/${docId}`)
       router.refresh()
     } finally {
       setLoading(false)

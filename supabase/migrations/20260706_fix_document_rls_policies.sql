@@ -92,3 +92,32 @@ using (
     and collaborators.user_id = auth.uid()
   )
 );
+
+-- Atomic document creation (bypasses RLS chicken-and-egg on insert + collaborator row)
+create or replace function public.create_document(document_title text default 'Untitled Document')
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  new_doc_id uuid;
+  uid uuid;
+begin
+  uid := auth.uid();
+  if uid is null then
+    raise exception 'Not authenticated';
+  end if;
+
+  insert into documents (title, owner_id)
+  values (document_title, uid)
+  returning id into new_doc_id;
+
+  insert into collaborators (document_id, user_id, role)
+  values (new_doc_id, uid, 'owner');
+
+  return new_doc_id;
+end;
+$$;
+
+grant execute on function public.create_document(text) to authenticated;

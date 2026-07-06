@@ -150,6 +150,12 @@ export function createMockSupabaseClient(): any {
     },
     channel: (topic: string) => {
       return new MockRealtimeChannel(topic)
-    }
+    },
+    rpc: (fn: string) => {
+      if (fn === 'create_document') {
+        return Promise.resolve({ data: 'mock-doc-id', error: null })
+      }
+      return Promise.resolve({ data: null, error: null })
+    },
   }
 }
