@@ -36,6 +36,7 @@ export function DocumentClient({
   const [isEditingTitle, setIsEditingTitle] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSavingTitle, setIsSavingTitle] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
@@ -51,17 +52,22 @@ export function DocumentClient({
       setDocTitle(title)
       return
     }
-    const { error } = await supabase.rpc('update_document_title', {
-      document_id: documentId,
-      new_title: trimmed,
-    })
-    if (error) {
-      setDocTitle(title)
-      setActionError(error.message || 'Could not rename document.')
-      return
+    setIsSavingTitle(true)
+    try {
+      const { error } = await supabase.rpc('update_document_title', {
+        document_id: documentId,
+        new_title: trimmed,
+      })
+      if (error) {
+        setDocTitle(title)
+        setActionError(error.message || 'Could not rename document.')
+        return
+      }
+      setDocTitle(trimmed)
+      router.refresh()
+    } finally {
+      setIsSavingTitle(false)
     }
-    setDocTitle(trimmed)
-    router.refresh()
   }
 
   async function handleDelete() {
@@ -103,18 +109,22 @@ export function DocumentClient({
               }}
               className="text-2xl font-semibold border-b focus:outline-none w-full max-w-md py-1"
               autoFocus
+              disabled={isSavingTitle}
               aria-label="Document Title"
             />
           ) : (
             <div className="flex items-center gap-2">
               <h1 
                 className={`text-2xl font-semibold ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-zinc-900 px-2 py-1 rounded transition' : ''}`}
-                onClick={() => canEdit && setIsEditingTitle(true)}
+                onClick={() => canEdit && !isSavingTitle && setIsEditingTitle(true)}
                 title={canEdit ? 'Click to rename' : undefined}
               >
                 {docTitle}
               </h1>
-              {canEdit && (
+              {isSavingTitle && (
+                <span className="text-sm text-gray-400">Saving…</span>
+              )}
+              {canEdit && !isSavingTitle && (
                 <button 
                   onClick={() => setIsEditingTitle(true)}
                   className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-sm"

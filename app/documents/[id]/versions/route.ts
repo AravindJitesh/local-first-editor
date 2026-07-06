@@ -33,7 +33,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   })
 
   if (error) {
-    return NextResponse.json({ error: 'insert failed' }, { status: 400 })
+    return NextResponse.json({ error: error.message ?? 'insert failed' }, { status: 400 })
   }
 
   return NextResponse.json({ success: true })

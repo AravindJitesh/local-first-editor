@@ -1,7 +1,7 @@
 'use client'
 
 import * as Y from 'yjs'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
@@ -22,65 +22,108 @@ export function VersionHistory({
   versions: Version[]
 }) {
   const [label, setLabel] = useState('')
+  const [localVersions, setLocalVersions] = useState(versions)
+  const [saving, setSaving] = useState(false)
+  const [restoringId, setRestoringId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const supabase = createClient()
   const router = useRouter()
 
+  useEffect(() => {
+    setLocalVersions(versions)
+  }, [versions])
+
   async function saveVersion() {
-    if (!label.trim()) return
+    const trimmed = label.trim()
+    if (!trimmed || saving) return
 
-    const snapshot = Y.encodeStateAsUpdate(ydoc)
+    setSaving(true)
+    setError(null)
 
-    await fetch(`/api/documents/${documentId}/versions`, {
-      method: 'POST',
-      body: JSON.stringify({
-        label,
-        snapshot: Array.from(snapshot),
-      }),
-    })
+    try {
+      const snapshot = Y.encodeStateAsUpdate(ydoc)
 
-    setLabel('')
-    router.refresh()
+      const response = await fetch(`/documents/${documentId}/versions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          label: trimmed,
+          snapshot: Array.from(snapshot),
+        }),
+      })
+
+      if (!response.ok) {
+        const body = await response.json().catch(() => null)
+        throw new Error(body?.error ?? 'Could not save version.')
+      }
+
+      setLabel('')
+      setLocalVersions((prev) => [
+        {
+          id: `pending-${Date.now()}`,
+          label: trimmed,
+          created_at: new Date().toISOString(),
+        },
+        ...prev,
+      ])
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save version.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function restoreVersion(versionId: string) {
-    const { data } = await supabase
-      .from('versions')
-      .select('snapshot')
-      .eq('id', versionId)
-      .single()
+    if (restoringId) return
 
-    if (!data) return
+    setRestoringId(versionId)
+    setError(null)
 
-    const snapshotUpdate = new Uint8Array(data.snapshot)
-    const snapshotDoc = new Y.Doc()
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('versions')
+        .select('snapshot')
+        .eq('id', versionId)
+        .single()
 
-    Y.applyUpdate(snapshotDoc, snapshotUpdate)
-
-    ydoc.transact(() => {
-      // 1. Restore the Y.XmlFragment 'content' for the editor
-      const currentFragment = ydoc.getXmlFragment('content')
-      const snapshotFragment = snapshotDoc.getXmlFragment('content')
-      if (currentFragment.length > 0) {
-        currentFragment.delete(0, currentFragment.length)
+      if (fetchError || !data) {
+        throw new Error(fetchError?.message ?? 'Could not load version.')
       }
-      const clonedChildren = snapshotFragment.toArray().map((item: any) => {
-        return typeof item.clone === 'function' ? item.clone() : item
-      })
-      currentFragment.insert(0, clonedChildren)
 
-      // 2. Restore the Y.Text 'content' for unit tests and fallback compatibility
-      const currentText = ydoc.getText('content')
-      const snapshotText = snapshotDoc.getText('content')
-      if (currentText.length > 0) {
-        currentText.delete(0, currentText.length)
-      }
-      if (snapshotText.length > 0) {
-        currentText.insert(0, snapshotText.toString())
-      }
-    }, 'restore')
+      const snapshotUpdate = new Uint8Array(data.snapshot)
+      const snapshotDoc = new Y.Doc()
 
-    snapshotDoc.destroy()
-    router.refresh()
+      Y.applyUpdate(snapshotDoc, snapshotUpdate)
+
+      ydoc.transact(() => {
+        const currentFragment = ydoc.getXmlFragment('content')
+        const snapshotFragment = snapshotDoc.getXmlFragment('content')
+        if (currentFragment.length > 0) {
+          currentFragment.delete(0, currentFragment.length)
+        }
+        const clonedChildren = snapshotFragment.toArray().map((item: any) => {
+          return typeof item.clone === 'function' ? item.clone() : item
+        })
+        currentFragment.insert(0, clonedChildren)
+
+        const currentText = ydoc.getText('content')
+        const snapshotText = snapshotDoc.getText('content')
+        if (currentText.length > 0) {
+          currentText.delete(0, currentText.length)
+        }
+        if (snapshotText.length > 0) {
+          currentText.insert(0, snapshotText.toString())
+        }
+      }, 'restore')
+
+      snapshotDoc.destroy()
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not restore version.')
+    } finally {
+      setRestoringId(null)
+    }
   }
 
   return (
@@ -94,18 +137,28 @@ export function VersionHistory({
           id="version-label"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') saveVersion()
+          }}
           placeholder="Version name"
           className="border rounded px-2 py-1 text-sm flex-1"
           aria-label="Version name"
+          disabled={saving}
         />
 
-        <Button size="sm" onClick={saveVersion}>
-          Save
+        <Button size="sm" onClick={saveVersion} disabled={saving || !label.trim()}>
+          {saving ? 'Saving…' : 'Save'}
         </Button>
       </div>
 
+      {error && (
+        <p className="text-xs text-red-500" role="alert">
+          {error}
+        </p>
+      )}
+
       <ul className="flex flex-col gap-2">
-        {versions.map((v) => (
+        {localVersions.map((v) => (
           <li
             key={v.id}
             className="flex justify-between items-center text-sm"
@@ -116,8 +169,9 @@ export function VersionHistory({
               size="sm"
               variant="outline"
               onClick={() => restoreVersion(v.id)}
+              disabled={restoringId !== null || v.id.startsWith('pending-')}
             >
-              Restore
+              {restoringId === v.id ? 'Restoring…' : 'Restore'}
             </Button>
           </li>
         ))}
