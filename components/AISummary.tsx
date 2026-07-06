@@ -18,7 +18,10 @@ export function AISummary({ ydoc }: { ydoc: Y.Doc }) {
 
       // Fallback to Y.Text content for unit tests and fallback compatibility
       if (!text) {
-        text = ydoc.getText('content').toString().trim()
+        const shareType = ydoc.share.get('content')
+        if (!shareType || shareType instanceof Y.Text) {
+          text = ydoc.getText('content').toString().trim()
+        }
       }
 
       if (!text) {

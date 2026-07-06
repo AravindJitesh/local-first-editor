@@ -194,13 +194,16 @@ export function VersionHistory({
         })
         currentFragment.insert(0, clonedChildren)
 
-        const currentText = ydoc.getText('content')
-        const snapshotText = snapshotDoc.getText('content')
-        if (currentText.length > 0) {
-          currentText.delete(0, currentText.length)
-        }
-        if (snapshotText.length > 0) {
-          currentText.insert(0, snapshotText.toString())
+        const shareType = ydoc.share.get('content')
+        if (!shareType || shareType instanceof Y.Text) {
+          const currentText = ydoc.getText('content')
+          const snapshotText = snapshotDoc.getText('content')
+          if (currentText.length > 0) {
+            currentText.delete(0, currentText.length)
+          }
+          if (snapshotText.length > 0) {
+            currentText.insert(0, snapshotText.toString())
+          }
         }
       }, 'restore')
 
