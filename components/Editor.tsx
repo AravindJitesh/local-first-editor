@@ -28,11 +28,19 @@ export function Editor({ documentId, canEdit }: { documentId: string; canEdit: b
   })
 
   return (
-    <div className="flex flex-col gap-3">
-      <ConnectionStatus status={status} />
-      <div className="border rounded-lg p-4 min-h-[400px] prose">
-        <EditorContent editor={editor} />
-      </div>
+  <div className="flex flex-col gap-3">
+    <ConnectionStatus status={status} />
+
+    <div
+      role="region"
+      aria-label="Document editor"
+      className="border rounded-lg p-4 min-h-[400px] prose"
+    >
+      <EditorContent
+        editor={editor}
+        aria-multiline="true"
+      />
     </div>
-  )
+  </div>
+)
 }
