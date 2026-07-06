@@ -1,13 +1,13 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 describe('RLS: role and tenant isolation', () => {
-  let ownerClient: ReturnType<typeof createClient>
-  let viewerClient: ReturnType<typeof createClient>
-  let outsiderClient: ReturnType<typeof createClient>
+  let ownerClient: SupabaseClient
+  let viewerClient: SupabaseClient
+  let outsiderClient: SupabaseClient
   let documentId: string
 
   beforeAll(async () => {
@@ -42,7 +42,9 @@ describe('RLS: role and tenant isolation', () => {
     const viewerUser = await getOrCreateUser(viewerClient, 'viewer-test-edtech@gmail.com')
     const outsiderUser = await getOrCreateUser(outsiderClient, 'outsider-test-edtech@gmail.com')
 
-    const { data: docId, error: createError } = await ownerClient.rpc('create_document')
+    const { data: docId, error: createError } = await ownerClient.rpc('create_document', {
+      document_title: 'RLS Test Doc',
+    })
 
     if (createError || !docId) {
       throw new Error(`create_document failed: ${createError?.message ?? 'no id returned'}`)
