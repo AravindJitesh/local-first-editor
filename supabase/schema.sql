@@ -64,3 +64,71 @@ using (
     and collaborators.user_id = auth.uid()
   )
 );
+
+-- Write policies for documents
+create policy "authenticated users can insert documents"
+on documents for insert
+to authenticated
+with check (owner_id = auth.uid());
+
+create policy "owners can delete their documents"
+on documents for delete
+using (owner_id = auth.uid());
+
+-- Write policies for collaborators
+create policy "owners can insert collaborators"
+on collaborators for insert
+to authenticated
+with check (
+  (role = 'owner' and user_id = auth.uid() and exists (
+    select 1 from documents where documents.id = document_id and documents.owner_id = auth.uid()
+  ))
+  or
+  exists (
+    select 1 from documents where documents.id = document_id and documents.owner_id = auth.uid()
+  )
+);
+
+create policy "owners can update collaborators"
+on collaborators for update
+using (
+  exists (
+    select 1 from documents where documents.id = document_id and documents.owner_id = auth.uid()
+  )
+);
+
+create policy "owners can delete collaborators"
+on collaborators for delete
+using (
+  exists (
+    select 1 from documents where documents.id = document_id and documents.owner_id = auth.uid()
+  )
+);
+
+-- Realtime transport layer channel RLS policies on realtime.messages
+alter table realtime.messages enable row level security;
+
+create policy "Allow collaborators to listen to channel"
+on realtime.messages
+for select
+to authenticated
+using (
+  exists (
+    select 1 from collaborators
+    where ('doc-sync-' || collaborators.document_id::text) = realtime.topic()
+    and collaborators.user_id = auth.uid()
+  )
+);
+
+create policy "Allow owners and editors to publish to channel"
+on realtime.messages
+for insert
+to authenticated
+with check (
+  exists (
+    select 1 from collaborators
+    where ('doc-sync-' || collaborators.document_id::text) = realtime.topic()
+    and collaborators.user_id = auth.uid()
+    and collaborators.role in ('owner', 'editor')
+  )
+);

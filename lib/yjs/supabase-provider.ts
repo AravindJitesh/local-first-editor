@@ -38,12 +38,12 @@ export class SupabaseYjsProvider {
     this.onStatusChange('connecting')
 
     this.channel = this.supabase
-      .channel(`doc-sync-${this.documentId}`)
-      .on('broadcast', { event: 'yjs-update' }, (payload) => {
+      .channel(`doc-sync-${this.documentId}`, { config: { private: true } })
+      .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
         const update = new Uint8Array(payload.payload.update)
         Y.applyUpdate(this.ydoc, update, 'remote')
       })
-      .subscribe((status) => {
+      .subscribe((status: any) => {
         if (status === 'SUBSCRIBED') {
           this.onStatusChange('online')
           this.flushQueue()

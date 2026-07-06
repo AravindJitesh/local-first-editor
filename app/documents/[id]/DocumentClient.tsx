@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic'
 import { getDocument } from '@/lib/yjs/doc'
 import { VersionHistory } from '@/components/VersionHistory'
 import { AISummary } from '@/components/AISummary'
+import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
 
 const Editor = dynamic(() => import('@/components/Editor').then((m) => m.Editor), {
   ssr: false,
@@ -31,7 +32,9 @@ export function DocumentClient({
       <h1 className="text-2xl font-semibold mb-4">{title}</h1>
       <div className="flex gap-6">
         <div className="flex-1">
-          <Editor documentId={documentId} canEdit={canEdit} />
+          <EditorErrorBoundary>
+            <Editor documentId={documentId} canEdit={canEdit} />
+          </EditorErrorBoundary>
           <AISummary ydoc={ydoc} />
         </div>
         <VersionHistory documentId={documentId} ydoc={ydoc} versions={versions} />

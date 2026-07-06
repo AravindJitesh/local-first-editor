@@ -15,18 +15,36 @@ describe('RLS: role and tenant isolation', () => {
     viewerClient = createClient(supabaseUrl, anonKey)
     outsiderClient = createClient(supabaseUrl, anonKey)
 
-    await ownerClient.auth.signUp({ email: 'owner-test@example.com', password: 'testpass123' })
-    await viewerClient.auth.signUp({ email: 'viewer-test@example.com', password: 'testpass123' })
-    await outsiderClient.auth.signUp({ email: 'outsider-test@example.com', password: 'testpass123' })
+    async function getOrCreateUser(client: any, email: string) {
+      const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
+        email,
+        password: 'testpass123',
+      })
+      if (!signInError && signInData?.user) {
+        return signInData.user
+      }
+      const { data: signUpData, error: signUpError } = await client.auth.signUp({
+        email,
+        password: 'testpass123',
+      })
+      if (signUpError) {
+        const { data: retryData } = await client.auth.signInWithPassword({
+          email,
+          password: 'testpass123',
+        })
+        if (retryData?.user) return retryData.user
+        throw new Error(`Auth failed for ${email}: ${signUpError.message}`)
+      }
+      return signUpData.user!
+    }
 
-    const { data: owner } = await ownerClient.auth.signInWithPassword({
-      email: 'owner-test@example.com',
-      password: 'testpass123',
-    })
+    const ownerUser = await getOrCreateUser(ownerClient, 'owner-test-edtech@gmail.com')
+    const viewerUser = await getOrCreateUser(viewerClient, 'viewer-test-edtech@gmail.com')
+    const outsiderUser = await getOrCreateUser(outsiderClient, 'outsider-test-edtech@gmail.com')
 
     const { data: doc } = await ownerClient
       .from('documents')
-      .insert({ title: 'RLS Test Doc', owner_id: owner.user!.id } as any)
+      .insert({ title: 'RLS Test Doc', owner_id: ownerUser.id } as any)
       .select()
       .single()
 
@@ -34,25 +52,15 @@ describe('RLS: role and tenant isolation', () => {
 
     await ownerClient.from('collaborators').insert({
       document_id: documentId,
-      user_id: owner.user!.id,
+      user_id: ownerUser.id,
       role: 'owner',
     } as any)
 
-    const { data: viewer } = await viewerClient.auth.signInWithPassword({
-      email: 'viewer-test@example.com',
-      password: 'testpass123',
-    })
-
     await ownerClient.from('collaborators').insert({
       document_id: documentId,
-      user_id: viewer.user!.id,
+      user_id: viewerUser.id,
       role: 'viewer',
     } as any)
-
-    await outsiderClient.auth.signInWithPassword({
-      email: 'outsider-test@example.com',
-      password: 'testpass123',
-    })
   })
 
   it('allows a viewer to read the document', async () => {

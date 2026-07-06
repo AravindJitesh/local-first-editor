@@ -22,7 +22,7 @@ export function Editor({ documentId, canEdit }: { documentId: string; canEdit: b
   const editor = useEditor({
     extensions: [
       StarterKit.configure(),
-      Collaboration.configure({ document: ydoc }),
+      Collaboration.configure({ document: ydoc, field: 'content' }),
     ],
     editable: canEdit,
   })

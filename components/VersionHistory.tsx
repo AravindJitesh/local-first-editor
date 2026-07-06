@@ -53,10 +53,28 @@ export function VersionHistory({
 
     Y.applyUpdate(snapshotDoc, snapshotUpdate)
 
-    const currentState = Y.encodeStateVector(ydoc)
-    const diff = Y.encodeStateAsUpdate(snapshotDoc, currentState)
+    ydoc.transact(() => {
+      // 1. Restore the Y.XmlFragment 'content' for the editor
+      const currentFragment = ydoc.getXmlFragment('content')
+      const snapshotFragment = snapshotDoc.getXmlFragment('content')
+      if (currentFragment.length > 0) {
+        currentFragment.delete(0, currentFragment.length)
+      }
+      const clonedChildren = snapshotFragment.toArray().map((item: any) => {
+        return typeof item.clone === 'function' ? item.clone() : item
+      })
+      currentFragment.insert(0, clonedChildren)
 
-    Y.applyUpdate(ydoc, diff, 'restore')
+      // 2. Restore the Y.Text 'content' for unit tests and fallback compatibility
+      const currentText = ydoc.getText('content')
+      const snapshotText = snapshotDoc.getText('content')
+      if (currentText.length > 0) {
+        currentText.delete(0, currentText.length)
+      }
+      if (snapshotText.length > 0) {
+        currentText.insert(0, snapshotText.toString())
+      }
+    }, 'restore')
 
     snapshotDoc.destroy()
   }
