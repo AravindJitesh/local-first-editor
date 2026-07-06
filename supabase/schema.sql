@@ -29,7 +29,8 @@ alter table versions enable row level security;
 create policy "collaborators can view their documents"
 on documents for select
 using (
-  exists (
+  owner_id = auth.uid()
+  or exists (
     select 1 from collaborators
     where collaborators.document_id = documents.id
     and collaborators.user_id = auth.uid()
