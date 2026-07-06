@@ -24,23 +24,29 @@ export function Editor({ documentId, canEdit }: { documentId: string; canEdit: b
       StarterKit.configure(),
       Collaboration.configure({ document: ydoc, field: 'content' }),
     ],
+    editorProps: {
+      attributes: {
+        class: 'focus:outline-none min-h-[380px]',
+      },
+    },
     editable: canEdit,
   })
 
   return (
-  <div className="flex flex-col gap-3">
-    <ConnectionStatus status={status} />
+    <div className="flex flex-col gap-3">
+      <ConnectionStatus status={status} />
 
-    <div
-      role="region"
-      aria-label="Document editor"
-      className="border rounded-lg p-4 min-h-[400px] prose"
-    >
-      <EditorContent
-        editor={editor}
-        aria-multiline="true"
-      />
+      <div
+        role="region"
+        aria-label="Document editor"
+        className="border rounded-lg p-4 min-h-[400px] prose cursor-text"
+        onClick={() => editor?.commands.focus()}
+      >
+        <EditorContent
+          editor={editor}
+          aria-multiline="true"
+        />
+      </div>
     </div>
-  </div>
-)
+  )
 }

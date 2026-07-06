@@ -4,6 +4,7 @@ import * as Y from 'yjs'
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { useRouter } from 'next/navigation'
 
 type Version = {
   id: string
@@ -22,6 +23,7 @@ export function VersionHistory({
 }) {
   const [label, setLabel] = useState('')
   const supabase = createClient()
+  const router = useRouter()
 
   async function saveVersion() {
     if (!label.trim()) return
@@ -37,6 +39,7 @@ export function VersionHistory({
     })
 
     setLabel('')
+    router.refresh()
   }
 
   async function restoreVersion(versionId: string) {
@@ -77,6 +80,7 @@ export function VersionHistory({
     }, 'restore')
 
     snapshotDoc.destroy()
+    router.refresh()
   }
 
   return (
