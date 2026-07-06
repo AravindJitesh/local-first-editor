@@ -68,7 +68,7 @@ export class SupabaseYjsProvider {
 
   private scheduleFlush() {
     if (this.flushTimer) return
-    this.flushTimer = setTimeout(() => this.flushQueue(), 250)
+    this.flushTimer = setTimeout(() => this.flushQueue(), 100)
   }
 
   private flushQueue() {

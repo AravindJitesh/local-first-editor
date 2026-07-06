@@ -30,8 +30,20 @@ export function VersionHistory({
   const router = useRouter()
 
   useEffect(() => {
-    setLocalVersions(versions)
-  }, [versions])
+    if (process.env.NEXT_PUBLIC_MOCK_SUPABASE === 'true') {
+      const fetchMockVersions = async () => {
+        const { data } = await supabase
+          .from('versions')
+          .select('id, label, created_at')
+          .eq('document_id', documentId)
+          .order('created_at', { ascending: false })
+        if (data) setLocalVersions(data as any)
+      }
+      fetchMockVersions()
+    } else {
+      setLocalVersions(versions)
+    }
+  }, [versions, documentId, supabase])
 
   async function saveVersion() {
     const trimmed = label.trim()
@@ -42,6 +54,26 @@ export function VersionHistory({
 
     try {
       const snapshot = Y.encodeStateAsUpdate(ydoc)
+
+      if (process.env.NEXT_PUBLIC_MOCK_SUPABASE === 'true') {
+        const { error: insertErr } = await supabase.from('versions').insert({
+          document_id: documentId,
+          label: trimmed,
+          snapshot: Array.from(snapshot),
+        } as any)
+        if (insertErr) throw new Error(insertErr.message)
+
+        const { data } = await supabase
+          .from('versions')
+          .select('id, label, created_at')
+          .eq('document_id', documentId)
+          .order('created_at', { ascending: false })
+        if (data) setLocalVersions(data as any)
+
+        setLabel('')
+        router.refresh()
+        return
+      }
 
       const response = await fetch(`/documents/${documentId}/versions`, {
         method: 'POST',

@@ -185,6 +185,18 @@ export function createMockSupabaseClient(): any {
         update: (data: any) => {
           return {
             eq: (col: string, val: any) => {
+              if (table === 'documents') {
+                if (typeof window !== 'undefined') {
+                  const docs = readMockDocs()
+                  const updated = docs.map((d) => {
+                    if (d.id === val) {
+                      return { ...d, title: data.title }
+                    }
+                    return d
+                  })
+                  writeMockDocs(updated)
+                }
+              }
               return Promise.resolve({ error: null })
             }
           }
@@ -192,6 +204,13 @@ export function createMockSupabaseClient(): any {
         delete: () => {
           return {
             eq: (col: string, val: any) => {
+              if (table === 'documents') {
+                if (typeof window !== 'undefined') {
+                  const docs = readMockDocs()
+                  const filtered = docs.filter((d) => d.id !== val)
+                  writeMockDocs(filtered)
+                }
+              }
               return Promise.resolve({ error: null })
             }
           }

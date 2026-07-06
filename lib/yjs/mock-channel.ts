@@ -36,7 +36,7 @@ export class MockRealtimeChannel {
       }
     }
 
-    this.pollIntervalId = setInterval(poll, 150)
+    this.pollIntervalId = setInterval(poll, 45)
   }
 
   on(type: string, filter: any, callback: BroadcastCallback) {
