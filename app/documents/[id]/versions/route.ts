@@ -28,7 +28,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { error } = await supabase.from('versions').insert({
     document_id: id,
     label: parsed.data.label,
-    snapshot: Buffer.from(parsed.data.snapshot),
+    snapshot: '\\x' + Buffer.from(parsed.data.snapshot).toString('hex'),
     created_by: user.user.id,
   })
 
