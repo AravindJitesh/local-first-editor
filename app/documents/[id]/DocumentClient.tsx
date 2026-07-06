@@ -1,11 +1,11 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import { getDocument } from '@/lib/yjs/doc'
+import { getDocument, destroyDocument } from '@/lib/yjs/doc'
 import { VersionHistory } from '@/components/VersionHistory'
 import { AISummary } from '@/components/AISummary'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -34,33 +34,53 @@ export function DocumentClient({
   
   const [docTitle, setDocTitle] = useState(title)
   const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   const supabase = createClient()
 
+  useEffect(() => {
+    setDocTitle(title)
+  }, [title])
+
   async function handleTitleChange(newTitle: string) {
     setIsEditingTitle(false)
-    if (!newTitle.trim() || newTitle === title) {
+    setActionError(null)
+    const trimmed = newTitle.trim()
+    if (!trimmed || trimmed === title) {
       setDocTitle(title)
       return
     }
-    const { error } = await supabase
-      .from('documents')
-      .update({ title: newTitle })
-      .eq('id', documentId)
-    if (!error) {
-      router.refresh()
+    const { error } = await supabase.rpc('update_document_title', {
+      document_id: documentId,
+      new_title: trimmed,
+    })
+    if (error) {
+      setDocTitle(title)
+      setActionError(error.message || 'Could not rename document.')
+      return
     }
+    setDocTitle(trimmed)
+    router.refresh()
   }
 
   async function handleDelete() {
     if (!confirm('Are you sure you want to delete this document?')) return
-    const { error } = await supabase
-      .from('documents')
-      .delete()
-      .eq('id', documentId)
-    if (!error) {
+    setActionError(null)
+    setIsDeleting(true)
+    try {
+      const { error } = await supabase.rpc('delete_document', {
+        document_id: documentId,
+      })
+      if (error) {
+        setActionError(error.message || 'Could not delete document.')
+        return
+      }
+      destroyDocument(documentId)
       router.push('/documents')
       router.refresh()
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -108,11 +128,17 @@ export function DocumentClient({
         </div>
         
         {isOwner && (
-          <Button variant="destructive" size="sm" onClick={handleDelete}>
-            Delete Document
+          <Button variant="destructive" size="sm" onClick={handleDelete} disabled={isDeleting}>
+            {isDeleting ? 'Deleting…' : 'Delete Document'}
           </Button>
         )}
       </div>
+
+      {actionError && (
+        <p className="text-sm text-red-500 mb-4" role="alert">
+          {actionError}
+        </p>
+      )}
 
       <div className="flex gap-6">
         <div className="flex-1">
