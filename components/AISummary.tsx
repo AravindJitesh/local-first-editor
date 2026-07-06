@@ -10,16 +10,42 @@ export function AISummary({ ydoc }: { ydoc: Y.Doc }) {
 
   async function generateSummary() {
     setLoading(true)
-    const text = ydoc.getText('content').toString()
+    try {
+      // Extract plain text from Tiptap XML fragment by stripping tags
+      const xmlFragment = ydoc.getXmlFragment('content')
+      const xmlString = xmlFragment.toString()
+      let text = xmlString ? xmlString.replace(/<[^>]*>/g, ' ').trim() : ''
 
-    const res = await fetch('/api/summarize', {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    })
+      // Fallback to Y.Text content for unit tests and fallback compatibility
+      if (!text) {
+        text = ydoc.getText('content').toString().trim()
+      }
 
-    const data = await res.json()
-    setSummary(data.summary ?? '')
-    setLoading(false)
+      if (!text) {
+        setSummary('The document is empty. Type some content first to generate a summary.')
+        return
+      }
+
+      const res = await fetch('/api/summarize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}))
+        setSummary(`Failed to generate summary: ${errData.error || 'Server error'}`)
+        return
+      }
+
+      const data = await res.json()
+      setSummary(data.summary ?? '')
+    } catch (err) {
+      console.error('Error generating summary:', err)
+      setSummary('Failed to contact the summarization service. Please check your network and API keys.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
