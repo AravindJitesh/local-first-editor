@@ -83,10 +83,29 @@ export function VersionHistory({
       return new Uint8Array((snapshot as any).data)
     }
     if (typeof snapshot === 'string') {
-      const raw = typeof atob === 'function'
-        ? atob(snapshot)
-        : Buffer.from(snapshot, 'base64').toString('binary')
-      return new Uint8Array(Array.from(raw, (c) => c.charCodeAt(0)))
+      const trimmed = snapshot.trim()
+      if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmed)
+          if (Array.isArray(parsed)) {
+            return new Uint8Array(parsed as number[])
+          }
+          if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).data)) {
+            return new Uint8Array((parsed as any).data)
+          }
+        } catch {
+          // Fall through to base64 parsing below
+        }
+      }
+
+      try {
+        const raw = typeof atob === 'function'
+          ? atob(trimmed)
+          : Buffer.from(trimmed, 'base64').toString('binary')
+        return new Uint8Array(Array.from(raw, (c) => c.charCodeAt(0)))
+      } catch {
+        return null
+      }
     }
     return null
   }
