@@ -74,6 +74,23 @@ export function VersionHistory({
     }
   }
 
+  function decodeSnapshot(snapshot: unknown): Uint8Array | null {
+    if (snapshot instanceof Uint8Array) return snapshot
+    if (snapshot instanceof ArrayBuffer) return new Uint8Array(snapshot)
+    if (ArrayBuffer.isView(snapshot)) return new Uint8Array((snapshot as ArrayBufferView).buffer)
+    if (Array.isArray(snapshot)) return new Uint8Array(snapshot as number[])
+    if (typeof snapshot === 'object' && snapshot !== null && 'data' in snapshot && Array.isArray((snapshot as any).data)) {
+      return new Uint8Array((snapshot as any).data)
+    }
+    if (typeof snapshot === 'string') {
+      const raw = typeof atob === 'function'
+        ? atob(snapshot)
+        : Buffer.from(snapshot, 'base64').toString('binary')
+      return new Uint8Array(Array.from(raw, (c) => c.charCodeAt(0)))
+    }
+    return null
+  }
+
   async function restoreVersion(versionId: string) {
     if (restoringId) return
 
@@ -91,9 +108,12 @@ export function VersionHistory({
         throw new Error(fetchError?.message ?? 'Could not load version.')
       }
 
-      const snapshotUpdate = new Uint8Array(data.snapshot)
-      const snapshotDoc = new Y.Doc()
+      const snapshotUpdate = decodeSnapshot(data.snapshot)
+      if (!snapshotUpdate) {
+        throw new Error('Invalid snapshot data.')
+      }
 
+      const snapshotDoc = new Y.Doc()
       Y.applyUpdate(snapshotDoc, snapshotUpdate)
 
       ydoc.transact(() => {
