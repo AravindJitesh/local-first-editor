@@ -6,12 +6,19 @@ import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 
 export function NewDocumentButton() {
+  const [title, setTitle] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const router = useRouter()
   const supabase = createClient()
 
   async function createDocument() {
+    const trimmed = title.trim()
+    if (!trimmed) {
+      setError('Please enter a document title.')
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -24,7 +31,7 @@ export function NewDocumentButton() {
       }
 
       const { data: docId, error: docError } = await supabase.rpc('create_document', {
-        document_title: 'Untitled Document',
+        document_title: trimmed,
       })
 
       if (docError || !docId) {
@@ -41,9 +48,23 @@ export function NewDocumentButton() {
 
   return (
     <div className="flex flex-col items-end gap-2">
-      <Button onClick={createDocument} disabled={loading}>
-        {loading ? 'Creating…' : 'New document'}
-      </Button>
+      <div className="flex gap-2 w-full max-w-lg">
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') createDocument()
+          }}
+          className="flex-1 border rounded px-2 py-1 text-sm"
+          placeholder="Document title"
+          aria-label="Document title"
+          disabled={loading}
+        />
+        <Button onClick={createDocument} disabled={loading || !title.trim()}>
+          {loading ? 'Creating…' : 'New document'}
+        </Button>
+      </div>
       {error && (
         <p className="text-sm text-red-500 max-w-xs text-right" role="alert">
           {error}
