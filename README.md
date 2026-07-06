@@ -61,6 +61,17 @@ current document (Y.encodeStateAsUpdate against the current state vector) and
 applies only that diff, so a restore merges like any other edit and can't destroy
 concurrent work from other collaborators.
 
+### Example: offline merge
+- Open the same document in two browser contexts.
+- Put both offline using browser DevTools.
+- Type different text in each editor.
+- Reconnect both clients.
+- The editors converge automatically and both final documents contain both
+  authors' edits.
+
+The offline convergence behavior is covered by the e2e test at
+`e2e/offline-sync.spec.ts`.
+
 ## Known limitations
 - A single Y.Doc's update history grows unbounded until compacted; this project
   snapshots on-demand but doesn't yet garbage-collect old Yjs updates automatically.

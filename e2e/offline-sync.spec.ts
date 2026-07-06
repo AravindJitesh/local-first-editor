@@ -8,9 +8,12 @@ test('two offline clients converge to the same document on reconnect', async () 
   const pageA = await contextA.newPage()
   const pageB = await contextB.newPage()
 
-  const documentUrl = 'http://localhost:3000/documents/YOUR_TEST_DOC_ID'
+  await pageA.goto('http://localhost:3000/documents')
+  await pageA.fill('input[aria-label="Document title"]', 'Offline merge test')
+  await pageA.click('button:has-text("New document")')
+  await pageA.waitForURL(/\/documents\/.+/)
 
-  await pageA.goto(documentUrl)
+  const documentUrl = pageA.url()
   await pageB.goto(documentUrl)
 
   const editorA = pageA.locator('[role="region"][aria-label="Document editor"] .ProseMirror')
