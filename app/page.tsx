@@ -11,6 +11,9 @@ export default async function Home() {
         <h1 className="text-5xl font-extrabold tracking-tight sm:text-6xl text-black">
           Local-First Collaborative Document Editor
         </h1>
+        <p className="max-w-3xl mx-auto text-lg leading-8 text-gray-600">
+          local-first collaborative document editor — like a lightweight Google Docs. You can type immediately, keep working offline, and when you reconnect, edits from multiple people merge automatically. It’s deployed on Vercel, backed by Supabase for auth and security, and uses Yjs CRDTs so there’s no central server sequencing every keystroke.
+        </p>
         <div className="flex justify-center gap-4 pt-4">
           {user ? (
             <Link
