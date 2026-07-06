@@ -84,6 +84,7 @@ export function VersionHistory({
     }
     if (typeof snapshot === 'string') {
       const trimmed = snapshot.trim()
+
       if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
         try {
           const parsed = JSON.parse(trimmed)
@@ -94,8 +95,23 @@ export function VersionHistory({
             return new Uint8Array((parsed as any).data)
           }
         } catch {
-          // Fall through to base64 parsing below
+          // Fall through to other parsing below
         }
+      }
+
+      if (/^\\x[0-9a-fA-F]+$/.test(trimmed)) {
+        const hex = trimmed.slice(2)
+        const bytes = hex.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+        return new Uint8Array(bytes)
+      }
+
+      if (/^[0-9a-fA-F]+$/.test(trimmed) && trimmed.length % 2 === 0) {
+        const bytes = trimmed.match(/.{2}/g)?.map((byte) => parseInt(byte, 16)) ?? []
+        return new Uint8Array(bytes)
+      }
+
+      if (/^[0-9]+(,[0-9]+)*$/.test(trimmed)) {
+        return new Uint8Array(trimmed.split(',').map((item) => Number(item.trim())))
       }
 
       try {
