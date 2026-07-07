@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { shouldRedirectToDocuments } from '@/lib/home'
 import { redirect } from 'next/navigation'
 
 export default async function Home() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (user) redirect('/documents')
+  if (shouldRedirectToDocuments(user)) redirect('/documents')
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
