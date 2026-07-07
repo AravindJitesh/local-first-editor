@@ -4,6 +4,15 @@ import { Button } from '@/components/ui/button'
 import { redirect } from 'next/navigation'
 import { NewDocumentButton } from './NewDocumentButton'
 
+type Collaboration = {
+  role: string
+  documents: {
+    id: string
+    title: string
+    created_at: string
+  }
+}
+
 export default async function DocumentsPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -23,7 +32,7 @@ export default async function DocumentsPage() {
       </div>
 
       <ul className="flex flex-col gap-2">
-        {collaborations?.map((c: any) => (
+        {(collaborations as Collaboration[] | null)?.map((c) => (
           <li key={c.documents.id} className="border rounded-lg p-4 flex justify-between items-center">
             <div>
               <Link href={`/documents/${c.documents.id}`} className="font-medium underline">
@@ -32,10 +41,10 @@ export default async function DocumentsPage() {
               <p className="text-sm text-gray-500 capitalize">{c.role}</p>
             </div>
             <Link href={`/documents/${c.documents.id}`}>
-  <Button variant="outline" size="sm">
-    Open
-  </Button>
-</Link>
+              <Button variant="outline" size="sm">
+                Open
+              </Button>
+            </Link>
           </li>
         ))}
       </ul>

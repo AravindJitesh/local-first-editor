@@ -5,7 +5,7 @@ import { getDocument, destroyDocument } from '@/lib/yjs/doc'
 import { VersionHistory } from '@/components/VersionHistory'
 import { AISummary } from '@/components/AISummary'
 import { EditorErrorBoundary } from '@/components/EditorErrorBoundary'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
@@ -40,10 +40,6 @@ export function DocumentClient({
   const [isSavingTitle, setIsSavingTitle] = useState(false)
   const router = useRouter()
   const supabase = createClient()
-
-  useEffect(() => {
-    setDocTitle(title)
-  }, [title])
 
   async function handleTitleChange(newTitle: string) {
     setIsEditingTitle(false)

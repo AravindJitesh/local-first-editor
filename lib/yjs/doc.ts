@@ -1,21 +1,28 @@
 import * as Y from 'yjs'
 
-const docCache = new Map<string, { ydoc: Y.Doc; persistence: any }>()
+type Persistence = {
+  destroy: () => void
+}
+
+const docCache = new Map<string, { ydoc: Y.Doc; persistence: Persistence | null }>()
 
 export function getDocument(documentId: string) {
   const cached = docCache.get(documentId)
   if (cached) return cached
 
   const ydoc = new Y.Doc()
-  let persistence = null
+  const persistence = null
 
   if (typeof window !== 'undefined') {
-    try {
-      const { IndexeddbPersistence } = require('y-indexeddb')
-      persistence = new IndexeddbPersistence(`doc-${documentId}`, ydoc)
-    } catch (e) {
-      console.warn('Failed to initialize IndexedDB persistence. falling back to in-memory Yjs doc.', e)
-    }
+    import('y-indexeddb')
+      .then(({ IndexeddbPersistence }) => {
+        const current = docCache.get(documentId)
+        if (!current || current.ydoc !== ydoc || current.persistence) return
+        current.persistence = new IndexeddbPersistence(`doc-${documentId}`, ydoc)
+      })
+      .catch((error: unknown) => {
+        console.warn('Failed to initialize IndexedDB persistence. falling back to in-memory Yjs doc.', error)
+      })
   }
 
   const entry = { ydoc, persistence }

@@ -3,6 +3,11 @@ import { createClient } from '@/lib/supabase/client'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 
 type ConnectionStatus = 'offline' | 'connecting' | 'online'
+type BroadcastPayload = {
+  payload?: {
+    update?: number[]
+  }
+}
 
 export class SupabaseYjsProvider {
   private ydoc: Y.Doc
@@ -11,7 +16,13 @@ export class SupabaseYjsProvider {
   private supabase = createClient()
   private updateQueue: Uint8Array[] = []
   private flushTimer: ReturnType<typeof setTimeout> | null = null
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null
   private onStatusChange: (status: ConnectionStatus) => void
+  private onlineHandler = () => this.connect()
+  private offlineHandler = () => {
+    this.disconnect()
+    this.onStatusChange('offline')
+  }
 
   constructor(
     documentId: string,
@@ -25,8 +36,8 @@ export class SupabaseYjsProvider {
     this.ydoc.on('update', this.handleLocalUpdate)
     this.connect()
 
-    window.addEventListener('online', () => this.connect())
-    window.addEventListener('offline', () => this.onStatusChange('offline'))
+    window.addEventListener('online', this.onlineHandler)
+    window.addEventListener('offline', this.offlineHandler)
   }
 
   private connect() {
@@ -35,29 +46,41 @@ export class SupabaseYjsProvider {
       return
     }
 
+    if (this.channel) return
     this.onStatusChange('connecting')
 
     this.channel = this.supabase
       .channel(`doc-sync-${this.documentId}`, { config: { private: true } })
-      .on('broadcast', { event: 'yjs-update' }, (payload: any) => {
+      .on('broadcast', { event: 'yjs-update' }, (payload: BroadcastPayload) => {
+        if (!payload.payload?.update) return
         const update = new Uint8Array(payload.payload.update)
         Y.applyUpdate(this.ydoc, update, 'remote')
       })
-      .subscribe((status: any) => {
+      .subscribe((status: string) => {
         if (status === 'SUBSCRIBED') {
           this.onStatusChange('online')
           this.flushQueue()
         }
         if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          this.disconnect()
           this.onStatusChange('offline')
           this.scheduleReconnect()
         }
       })
   }
 
+  private disconnect() {
+    this.channel?.unsubscribe()
+    this.channel = null
+  }
+
   private scheduleReconnect(attempt = 1) {
+    if (this.reconnectTimer) return
     const delay = Math.min(1000 * 2 ** attempt, 15000)
-    setTimeout(() => this.connect(), delay)
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null
+      this.connect()
+    }, delay)
   }
 
   private handleLocalUpdate = (update: Uint8Array, origin: unknown) => {
@@ -88,7 +111,10 @@ export class SupabaseYjsProvider {
 
   destroy() {
     this.ydoc.off('update', this.handleLocalUpdate)
-    this.channel?.unsubscribe()
+    this.disconnect()
     if (this.flushTimer) clearTimeout(this.flushTimer)
+    if (this.reconnectTimer) clearTimeout(this.reconnectTimer)
+    window.removeEventListener('online', this.onlineHandler)
+    window.removeEventListener('offline', this.offlineHandler)
   }
 }

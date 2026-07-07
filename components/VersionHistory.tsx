@@ -12,6 +12,10 @@ type Version = {
   created_at: string
 }
 
+type SnapshotEnvelope = {
+  data?: unknown
+}
+
 export function VersionHistory({
   documentId,
   ydoc,
@@ -37,11 +41,9 @@ export function VersionHistory({
           .select('id, label, created_at')
           .eq('document_id', documentId)
           .order('created_at', { ascending: false })
-        if (data) setLocalVersions(data as any)
+        if (data) setLocalVersions(data as Version[])
       }
       fetchMockVersions()
-    } else {
-      setLocalVersions(versions)
     }
   }, [versions, documentId, supabase])
 
@@ -60,7 +62,7 @@ export function VersionHistory({
           document_id: documentId,
           label: trimmed,
           snapshot: Array.from(snapshot),
-        } as any)
+        })
         if (insertErr) throw new Error(insertErr.message)
 
         const { data } = await supabase
@@ -68,7 +70,7 @@ export function VersionHistory({
           .select('id, label, created_at')
           .eq('document_id', documentId)
           .order('created_at', { ascending: false })
-        if (data) setLocalVersions(data as any)
+        if (data) setLocalVersions(data as Version[])
 
         setLabel('')
         router.refresh()
@@ -111,8 +113,9 @@ export function VersionHistory({
     if (snapshot instanceof ArrayBuffer) return new Uint8Array(snapshot)
     if (ArrayBuffer.isView(snapshot)) return new Uint8Array((snapshot as ArrayBufferView).buffer)
     if (Array.isArray(snapshot)) return new Uint8Array(snapshot as number[])
-    if (typeof snapshot === 'object' && snapshot !== null && 'data' in snapshot && Array.isArray((snapshot as any).data)) {
-      return new Uint8Array((snapshot as any).data)
+    if (typeof snapshot === 'object' && snapshot !== null && 'data' in snapshot) {
+      const data = (snapshot as SnapshotEnvelope).data
+      if (Array.isArray(data)) return new Uint8Array(data as number[])
     }
     if (typeof snapshot === 'string') {
       const trimmed = snapshot.trim()
@@ -123,8 +126,9 @@ export function VersionHistory({
           if (Array.isArray(parsed)) {
             return new Uint8Array(parsed as number[])
           }
-          if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).data)) {
-            return new Uint8Array((parsed as any).data)
+          if (parsed && typeof parsed === 'object' && 'data' in parsed) {
+            const data = (parsed as SnapshotEnvelope).data
+            if (Array.isArray(data)) return new Uint8Array(data as number[])
           }
         } catch {
           // Fall through to other parsing below
@@ -189,9 +193,12 @@ export function VersionHistory({
         if (currentFragment.length > 0) {
           currentFragment.delete(0, currentFragment.length)
         }
-        const clonedChildren = snapshotFragment.toArray().map((item: any) => {
-          return typeof item.clone === 'function' ? item.clone() : item
-        })
+        const clonedChildren = snapshotFragment
+          .toArray()
+          .filter((item): item is Y.XmlElement | Y.XmlText => {
+            return item instanceof Y.XmlElement || item instanceof Y.XmlText
+          })
+          .map((item) => item.clone())
         currentFragment.insert(0, clonedChildren)
 
         const shareType = ydoc.share.get('content')

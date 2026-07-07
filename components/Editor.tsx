@@ -10,13 +10,11 @@ import { ConnectionStatus } from './ConnectionStatus'
 
 export function Editor({ documentId, canEdit }: { documentId: string; canEdit: boolean }) {
   const [status, setStatus] = useState<'offline' | 'connecting' | 'online'>('offline')
-  const [provider, setProvider] = useState<SupabaseYjsProvider | null>(null)
   const { ydoc } = getDocument(documentId)
 
   useEffect(() => {
-    const p = new SupabaseYjsProvider(documentId, ydoc, setStatus)
-    setProvider(p)
-    return () => p.destroy()
+    const provider = new SupabaseYjsProvider(documentId, ydoc, setStatus)
+    return () => provider.destroy()
   }, [documentId, ydoc])
 
   const editor = useEditor({

@@ -1,7 +1,6 @@
-import { test, expect, chromium } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 
-test('two offline clients converge to the same document on reconnect', async () => {
-  const browser = await chromium.launch()
+test('two offline clients converge to the same document on reconnect', async ({ browser }) => {
   const contextA = await browser.newContext()
   const contextB = await browser.newContext()
 
@@ -45,5 +44,6 @@ test('two offline clients converge to the same document on reconnect', async () 
   expect(finalA).toContain('Edited from tab A.')
   expect(finalA).toContain('Edited from tab B.')
 
-  await browser.close()
+  await contextA.close()
+  await contextB.close()
 })

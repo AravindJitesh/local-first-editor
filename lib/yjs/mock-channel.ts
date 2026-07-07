@@ -1,10 +1,22 @@
-type BroadcastCallback = (payload: any) => void
+type BroadcastPayload = {
+  payload: {
+    update: number[]
+  }
+}
+
+type BroadcastCallback = (payload: BroadcastPayload) => void
+type BroadcastFilter = { event: string }
+type OutgoingBroadcast = {
+  payload?: {
+    update?: number[]
+  }
+}
 
 export class MockRealtimeChannel {
   private topic: string
   private documentId: string
   private listeners: { [event: string]: BroadcastCallback[] } = {}
-  private pollIntervalId: any = null
+  private pollIntervalId: ReturnType<typeof setInterval> | null = null
   private lastTimestamp: number = 0
 
   constructor(topic: string) {
@@ -31,7 +43,7 @@ export class MockRealtimeChannel {
             callbacks.forEach(cb => cb({ payload: { update: updateArray } }))
           })
         }
-      } catch (err) {
+      } catch {
         // Ignore network errors when offline
       }
     }
@@ -39,7 +51,7 @@ export class MockRealtimeChannel {
     this.pollIntervalId = setInterval(poll, 45)
   }
 
-  on(type: string, filter: any, callback: BroadcastCallback) {
+  on(type: string, filter: BroadcastFilter, callback: BroadcastCallback) {
     if (type === 'broadcast' && filter.event === 'yjs-update') {
       const key = 'broadcast:yjs-update'
       if (!this.listeners[key]) {
@@ -57,7 +69,7 @@ export class MockRealtimeChannel {
     return this
   }
 
-  send(data: any) {
+  send(data: OutgoingBroadcast) {
     if (typeof window !== 'undefined' && navigator.onLine && data.payload?.update) {
       fetch('/api/mock-sync', {
         method: 'POST',

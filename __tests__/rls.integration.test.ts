@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll } from 'vitest'
-import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient, type User } from '@supabase/supabase-js'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
@@ -15,7 +15,7 @@ describe('RLS: role and tenant isolation', () => {
     viewerClient = createClient(supabaseUrl, anonKey)
     outsiderClient = createClient(supabaseUrl, anonKey)
 
-    async function getOrCreateUser(client: any, email: string) {
+    async function getOrCreateUser(client: SupabaseClient, email: string): Promise<User> {
       const { data: signInData, error: signInError } = await client.auth.signInWithPassword({
         email,
         password: 'testpass123',
@@ -38,9 +38,9 @@ describe('RLS: role and tenant isolation', () => {
       return signUpData.user!
     }
 
-    const ownerUser = await getOrCreateUser(ownerClient, 'owner-test-edtech@gmail.com')
+    await getOrCreateUser(ownerClient, 'owner-test-edtech@gmail.com')
     const viewerUser = await getOrCreateUser(viewerClient, 'viewer-test-edtech@gmail.com')
-    const outsiderUser = await getOrCreateUser(outsiderClient, 'outsider-test-edtech@gmail.com')
+    await getOrCreateUser(outsiderClient, 'outsider-test-edtech@gmail.com')
 
     const { data: docId, error: createError } = await ownerClient.rpc('create_document', {
       document_title: 'RLS Test Doc',
@@ -55,13 +55,13 @@ describe('RLS: role and tenant isolation', () => {
       document_id: documentId,
       user_id: viewerUser.id,
       role: 'viewer',
-    } as any)
+    } as never)
   })
 
   it('allows a viewer to read the document', async () => {
     const { data, error } = await viewerClient.from('documents').select().eq('id', documentId).single()
     expect(error).toBeNull()
-    expect((data as any)?.title).toBe('RLS Test Doc')
+    expect((data as { title?: string } | null)?.title).toBe('RLS Test Doc')
   })
 
   it('rejects a viewer inserting a version', async () => {
@@ -69,7 +69,7 @@ describe('RLS: role and tenant isolation', () => {
       document_id: documentId,
       label: 'sneaky version',
       snapshot: Buffer.from([1, 2, 3]),
-    } as any)
+    } as never)
     expect(error).not.toBeNull()
   })
 

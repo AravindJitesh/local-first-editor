@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { MockRealtimeChannel } from '../yjs/mock-channel'
 
 const MOCK_DOCS_KEY = 'mock_documents'
