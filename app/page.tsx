@@ -1,14 +1,6 @@
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
-import { shouldRedirectToDocuments } from '@/lib/home'
-import { redirect } from 'next/navigation'
 
-export default async function Home() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (shouldRedirectToDocuments(user)) redirect('/documents')
-
+export default function Home() {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 text-center">
       <div className="max-w-3xl mx-auto space-y-6">
@@ -19,29 +11,18 @@ export default async function Home() {
           local-first collaborative document editor — like a lightweight Google Docs. You can type immediately, keep working offline, and when you reconnect, edits from multiple people merge automatically. It’s deployed on Vercel, backed by Supabase for auth and security, and uses Yjs CRDTs so there’s no central server sequencing every keystroke.
         </p>
         <div className="flex justify-center gap-4 pt-4">
-          {user ? (
-            <Link
-              href="/documents"
-              className="px-6 py-3 text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition"
-            >
-              Go to Documents
-            </Link>
-          ) : (
-            <>
-              <Link
-                href="/login"
-                className="px-6 py-3 text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition"
-              >
-                Get Started
-              </Link>
-              <Link
-                href="/login"
-                className="px-6 py-3 text-base font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg shadow-sm transition"
-              >
-                Sign In
-              </Link>
-            </>
-          )}
+          <Link
+            href="/login"
+            className="px-6 py-3 text-base font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow transition"
+          >
+            Get Started
+          </Link>
+          <Link
+            href="/documents"
+            className="px-6 py-3 text-base font-medium text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-900 hover:bg-indigo-50 dark:hover:bg-indigo-950 rounded-lg shadow-sm transition"
+          >
+            Go to Documents
+          </Link>
         </div>
       </div>
     </div>
