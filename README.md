@@ -36,7 +36,9 @@ Restore is intentionally merge-like rather than a blind database overwrite. The 
 
 ## Auth And Authorization
 
-Authenticated users can create documents through RPC helpers that atomically insert the document and collaborator row. Documents, collaborators, versions, and Realtime messages are protected by RLS policies. The integration test verifies that:
+Authenticated users can create documents through RPC helpers that atomically insert the document and collaborator row. Documents, collaborators, versions, and Realtime messages are protected by RLS policies. When signing in, use a valid email address in the sign-in field because the app expects a proper email format.
+
+The integration test verifies that:
 
 - A collaborator can read a shared document.
 - A viewer cannot insert a version.
@@ -107,6 +109,8 @@ npm run test:integration
 ```
 
 ## Deployment
+
+Live demo: https://local-first-editor.vercel.app/
 
 The app is compatible with Vercel. Required production environment variables:
 
